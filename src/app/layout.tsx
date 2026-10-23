@@ -1,7 +1,7 @@
-
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Inter, Space_Grotesk } from "next/font/google";
+import ChatWidget from "../components/ChatWidget";
 import "./globals.css";
 
 const inter = Inter({
@@ -47,7 +47,10 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
-      <body className="min-h-screen font-sans">{children}</body>
+      <body className="min-h-screen font-sans">
+        {children}
+        <ChatWidget />
+      </body>
     </html>
   );
 }

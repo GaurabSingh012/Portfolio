@@ -1,0 +1,238 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import ReactMarkdown from "react-markdown";
+import styles from "./ChatWidget.module.css";
+
+type Message = {
+  id: string;
+  role: "assistant" | "user";
+  content: string;
+};
+
+type ChatApiResponse = {
+  answer?: unknown;
+  error?: unknown;
+};
+
+function createMessageId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+export default function ChatWidget() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "welcome",
+      role: "assistant",
+      content:
+        "Hi! 👋 I'm Gaurab's portfolio assistant. Ask me about his projects, skills, education, or experience.",
+    },
+  ]);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      messagesEndRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    }
+  }, [messages, isOpen, isLoading, error]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const question = input.trim();
+
+    if (!question || isLoading) {
+      return;
+    }
+
+    setInput("");
+    setError("");
+    setIsLoading(true);
+
+    setMessages((current) => [
+      ...current,
+      {
+        id: createMessageId(),
+        role: "user",
+        content: question,
+      },
+    ]);
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ question }),
+      });
+
+      const payload = (await response
+        .json()
+        .catch(() => null)) as ChatApiResponse | null;
+
+      if (!response.ok) {
+        const errorMessage =
+          typeof payload?.error === "string"
+            ? payload.error
+            : "The assistant couldn't answer right now. Please try again.";
+
+        throw new Error(errorMessage);
+      }
+
+      if (typeof payload?.answer !== "string") {
+        throw new Error("The assistant returned an invalid response.");
+      }
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: createMessageId(),
+          role: "assistant",
+          content: payload.answer as string,
+        },
+      ]);
+    } catch (caughtError) {
+      console.warn("Portfolio chat request failed:", caughtError);
+
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.launcher}
+        onClick={() => setIsOpen((open) => !open)}
+        aria-label={isOpen ? "Close chat" : "Open portfolio assistant"}
+        aria-expanded={isOpen}
+        aria-controls="portfolio-chat-panel"
+        title="Chat with my AI assistant"
+      >
+        {isOpen ? "×" : "✦"}
+      </button>
+
+      {isOpen && (
+        <section
+          id="portfolio-chat-panel"
+          className={styles.panel}
+          role="dialog"
+          aria-label="Portfolio AI assistant"
+        >
+          <header className={styles.header}>
+            <div className={styles.avatar} aria-hidden="true">
+              ✦
+            </div>
+
+            <div className={styles.headerText}>
+              <h2>Portfolio Assistant</h2>
+              <p>
+                <span className={styles.statusDot} />
+                Ask about Gaurab&apos;s work
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className={styles.closeButton}
+              onClick={() => setIsOpen(false)}
+              aria-label="Close assistant"
+            >
+              ×
+            </button>
+          </header>
+
+          <div className={styles.conversation} aria-live="polite">
+            {messages.map((message) => (
+              <article
+                key={message.id}
+                className={`${styles.message} ${
+                  message.role === "user"
+                    ? styles.userMessage
+                    : styles.assistantMessage
+                }`}
+              >
+                <div
+                  className={`${styles.bubble} ${
+                    message.role === "user"
+                      ? styles.userBubble
+                      : styles.assistantBubble
+                  }`}
+                >
+                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                </div>
+              </article>
+            ))}
+
+            {isLoading && (
+              <div
+                className={`${styles.message} ${styles.assistantMessage}`}
+              >
+                <div className={`${styles.bubble} ${styles.assistantBubble}`}>
+                  Thinking...
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <p className={styles.error} role="alert">
+                {error}
+              </p>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          <form className={styles.form} onSubmit={handleSubmit}>
+            <label
+              htmlFor="portfolio-chat-input"
+              className={styles.srOnly}
+            >
+              Ask a question about the portfolio
+            </label>
+
+            <input
+              id="portfolio-chat-input"
+              type="text"
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder="Ask me anything..."
+              maxLength={1000}
+              autoComplete="off"
+              disabled={isLoading}
+            />
+
+            <button
+              type="submit"
+              disabled={!input.trim() || isLoading}
+              aria-label="Send message"
+            >
+              ↑
+            </button>
+          </form>
+
+          <p className={styles.disclaimer}>
+            AI-powered · Answers based on portfolio knowledge
+          </p>
+        </section>
+      )}
+    </>
+  );
+}
