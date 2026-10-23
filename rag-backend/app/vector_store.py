@@ -30,7 +30,7 @@ QDRANT_COLLECTION = os.getenv(
     "QDRANT_COLLECTION", "portfolio_knowledge"
 )
 
-PIPELINE_VERSION = "chunker-v2"
+PIPELINE_VERSION = "chunker-v3"
 EMBEDDING_BATCH_SIZE = 8
 
 

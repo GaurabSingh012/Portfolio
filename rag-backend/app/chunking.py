@@ -1,11 +1,12 @@
+
+import re
+
+
 def normalize_text(text: str) -> str:
     """Normalize line endings and unnecessary whitespace."""
-    import re
-
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r"[ \t]+\n", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
-
     return text.strip()
 
 
@@ -15,55 +16,76 @@ def find_chunk_boundary(
     hard_end: int,
     minimum_boundary: int,
 ) -> int:
-    """
-    Find a suitable end position using this priority:
-    paragraph -> line -> sentence -> word -> hard limit.
+    """Choose paragraph, line, sentence, word, or hard boundary."""
 
-    Returns an end position suitable for text[start:end].
-    """
-
-    # 1. Prefer a paragraph break (two newline characters).
+    # 1. Prefer the rightmost acceptable paragraph break.
     position = text.rfind("\n\n", start, hard_end)
 
     if position >= minimum_boundary:
-        return position + len("\n\n")
+        return position + 2
 
-    # 2. If there is no suitable paragraph break, try a line break.
+    # 2. Otherwise, prefer the rightmost acceptable line break.
     position = text.rfind("\n", start, hard_end)
 
     if position >= minimum_boundary:
-        return position + len("\n")
+        return position + 1
 
-    # 3. If there is no suitable line break, try a sentence ending.
-    sentence_separators = (". ", "? ", "! ")
+    # 3. Otherwise, find the rightmost acceptable sentence ending.
+    candidates = []
 
-    sentence_candidates = []
-
-    for separator in sentence_separators:
+    for separator in (". ", "? ", "! "):
         position = text.rfind(separator, start, hard_end)
 
         if position >= minimum_boundary:
-            sentence_candidates.append(
-                (position, len(separator))
-            )
+            candidates.append((position, len(separator)))
 
-    if sentence_candidates:
-        # Among sentence endings, choose the rightmost one.
-        position, separator_length = max(
-            sentence_candidates,
-            key=lambda candidate: candidate[0],
-        )
+    if candidates:
+        position, width = max(candidates, key=lambda item: item[0])
+        return position + width
 
-        return position + separator_length
-
-    # 4. If there is no suitable sentence ending, try a word boundary.
+    # 4. Otherwise, prefer a word boundary.
     position = text.rfind(" ", start, hard_end)
 
     if position >= minimum_boundary:
         return position + 1
 
-    # 5. No suitable separator was found. Use the hard limit.
+    # 5. No suitable separator found.
     return hard_end
+
+
+def find_overlap_start(
+    text: str,
+    previous_start: int,
+    previous_end: int,
+    overlap: int,
+) -> int:
+    """
+    Calculate the next chunk's start near the requested overlap.
+
+    Avoid starting in the middle of a word when possible.
+    The resulting overlap may vary slightly.
+    """
+    candidate = max(previous_start + 1, previous_end - overlap)
+
+    if candidate >= len(text):
+        return candidate
+
+    # Already starts at a word boundary.
+    if text[candidate - 1].isspace():
+        return candidate
+
+    # Prefer moving forward to finish the partial word.
+    for index in range(candidate, previous_end):
+        if text[index].isspace():
+            return index + 1
+
+    # If necessary, move backward to a preceding word boundary.
+    for index in range(candidate - 1, previous_start - 1, -1):
+        if text[index].isspace():
+            return index + 1
+
+    # Fallback for long unbroken strings.
+    return candidate
 
 
 def chunk_text(
@@ -71,12 +93,7 @@ def chunk_text(
     chunk_size: int = 1200,
     overlap: int = 180,
 ) -> list[str]:
-    """
-    Split text into overlapping, boundary-aware character chunks.
-
-    chunk_size: maximum target length of each chunk, in characters.
-    overlap: approximate number of characters repeated between chunks.
-    """
+    """Create overlapping, boundary-aware character chunks."""
 
     if chunk_size <= 0:
         raise ValueError("chunk_size must be greater than zero.")
@@ -96,14 +113,11 @@ def chunk_text(
     text_length = len(text)
 
     while start < text_length:
-        # The chunk should not exceed this target end position.
         hard_end = min(start + chunk_size, text_length)
 
-        # If the remaining text fits, use all of it as the final chunk.
         if hard_end == text_length:
             end = text_length
         else:
-            # Avoid choosing a boundary too early in the chunk.
             minimum_boundary = start + int(chunk_size * 0.6)
 
             end = find_chunk_boundary(
@@ -121,8 +135,11 @@ def chunk_text(
         if end >= text_length:
             break
 
-        # Begin the next chunk before the previous one ended.
-        # This repeats approximately `overlap` characters.
-        start = max(start + 1, end - overlap)
+        start = find_overlap_start(
+            text=text,
+            previous_start=start,
+            previous_end=end,
+            overlap=overlap,
+        )
 
     return chunks
