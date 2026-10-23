@@ -294,10 +294,10 @@ button {
   position: absolute;
   z-index: 0;
   top: 0;
-  right: var(--page-gutter);
   bottom: 0;
   left: 0;
-  width: calc(100% - var(--page-gutter));
+  right: calc(var(--page-gutter) + 36px);
+  width: calc(100% - var(--page-gutter) - 36px);
   pointer-events: none;
 
   background-image: url("/hero-background.png");
