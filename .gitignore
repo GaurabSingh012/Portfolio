@@ -42,3 +42,14 @@ next-env.d.ts
 
 # Allow a safe environment-variable template
 !.env.example
+
+# Python RAG backend
+rag-backend/.venv/
+rag-backend/.env
+
+# Python cache and generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
