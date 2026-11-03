@@ -1,3 +1,4 @@
+
 import argparse
 import os
 from pathlib import Path
@@ -7,25 +8,40 @@ from google import genai
 from google.genai import types
 from qdrant_client import QdrantClient
 
+# ---------------------------------------------------------
+# 1. Configuration
+# ---------------------------------------------------------
+
 ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
-load_dotenv(ENV_FILE)
+
+# Explicitly load the backend environment configuration.
+load_dotenv(ENV_FILE, override=True)
 
 EMBEDDING_MODEL = os.getenv(
     "GEMINI_EMBEDDING_MODEL",
     "gemini-embedding-2",
 )
+
 EMBEDDING_DIMENSIONS = int(
     os.getenv("EMBEDDING_DIMENSIONS", "768")
 )
+
 QDRANT_URL = os.getenv(
     "QDRANT_URL",
     "http://127.0.0.1:6333",
 )
+
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
 QDRANT_COLLECTION = os.getenv(
     "QDRANT_COLLECTION",
     "portfolio_knowledge",
 )
 
+
+# ---------------------------------------------------------
+# 2. Query Embeddings
+# ---------------------------------------------------------
 
 def embed_query(
     client: genai.Client,
@@ -52,7 +68,9 @@ def embed_query(
             "Gemini did not return one valid query embedding."
         )
 
-    vector = [float(value) for value in embeddings[0].values]
+    vector = [
+        float(value) for value in embeddings[0].values
+    ]
 
     if len(vector) != EMBEDDING_DIMENSIONS:
         raise RuntimeError(
@@ -63,6 +81,10 @@ def embed_query(
     return vector
 
 
+# ---------------------------------------------------------
+# 3. Retrieve Relevant Documents
+# ---------------------------------------------------------
+
 def retrieve(question: str, limit: int = 5) -> list:
     """Return the most similar text chunks from Qdrant."""
 
@@ -72,19 +94,35 @@ def retrieve(question: str, limit: int = 5) -> list:
     if limit < 1:
         raise ValueError("The result limit must be at least 1.")
 
-    api_key = os.getenv("GEMINI_API_KEY")
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
 
-    if not api_key:
+    if not gemini_api_key:
         raise RuntimeError(
             f"GEMINI_API_KEY was not found in {ENV_FILE}."
+        )
+
+    # A cloud connection requires a Qdrant API key.
+    # Local Qdrant can operate without one.
+    if QDRANT_URL.startswith("https://") and not QDRANT_API_KEY:
+        raise RuntimeError(
+            f"QDRANT_API_KEY was not found in {ENV_FILE}."
         )
 
     gemini_client = None
     qdrant_client = None
 
     try:
-        gemini_client = genai.Client(api_key=api_key)
-        qdrant_client = QdrantClient(url=QDRANT_URL)
+        # Client 1: Gemini generates the query embedding.
+        gemini_client = genai.Client(
+            api_key=gemini_api_key
+        )
+
+        # Client 2: Qdrant searches the cloud vector database.
+        qdrant_client = QdrantClient(
+            url=QDRANT_URL,
+            api_key=QDRANT_API_KEY,
+            timeout=15,
+        )
 
         if not qdrant_client.collection_exists(QDRANT_COLLECTION):
             raise RuntimeError(
@@ -92,10 +130,13 @@ def retrieve(question: str, limit: int = 5) -> list:
                 "Run the ingestion synchronization first."
             )
 
-        # First, embed the question.
-        query_vector = embed_query(gemini_client, question)
+        # Step 1: Convert the visitor's question into a vector.
+        query_vector = embed_query(
+            gemini_client,
+            question,
+        )
 
-        # Then, search the existing document vectors.
+        # Step 2: Find the most similar document vectors.
         response = qdrant_client.query_points(
             collection_name=QDRANT_COLLECTION,
             query=query_vector,
@@ -114,6 +155,10 @@ def retrieve(question: str, limit: int = 5) -> list:
             if gemini_client is not None:
                 gemini_client.close()
 
+
+# ---------------------------------------------------------
+# 4. Command-Line Testing
+# ---------------------------------------------------------
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -136,7 +181,10 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    results = retrieve(args.question, limit=args.limit)
+    results = retrieve(
+        args.question,
+        limit=args.limit,
+    )
 
     print(f"\nQuestion: {args.question}")
     print(f"Retrieved {len(results)} chunk(s).\n")
@@ -145,10 +193,17 @@ def main() -> None:
         payload = point.payload or {}
 
         print("=" * 72)
-        print(f"Result {rank} | Similarity score: {point.score:.4f}")
+        print(
+            f"Result {rank} | "
+            f"Similarity score: {point.score:.4f}"
+        )
         print(f"Source: {payload.get('source', 'unknown')}")
         print(f"Title: {payload.get('title', 'unknown')}")
-        print(f"Chunk index: {payload.get('chunk_index', 'unknown')}")
+        print(
+            f"Chunk index: "
+            f"{payload.get('chunk_index', 'unknown')}"
+        )
+
         print("\nText:")
         print(payload.get("text", ""))
 

@@ -1,3 +1,4 @@
+
 import argparse
 import hashlib
 import os
@@ -19,13 +20,22 @@ from app.ingestion import ROOT_DIR, discover_documents, load_documents
 # ---------------------------------------------------------
 
 ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
-load_dotenv(ENV_FILE)
+
+# Load the backend environment file explicitly.
+# override=True ensures the values in this file are used
+# even if conflicting environment variables already exist.
+load_dotenv(ENV_FILE, override=True)
 
 EMBEDDING_MODEL = os.getenv(
     "GEMINI_EMBEDDING_MODEL", "gemini-embedding-2"
 )
 EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "768"))
-QDRANT_URL = os.getenv("QDRANT_URL", "http://127.0.0.1:6333")
+
+QDRANT_URL = os.getenv(
+    "QDRANT_URL", "http://127.0.0.1:6333"
+)
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
 QDRANT_COLLECTION = os.getenv(
     "QDRANT_COLLECTION", "portfolio_knowledge"
 )
@@ -254,11 +264,18 @@ def embed_chunks(
 def sync_to_qdrant() -> None:
     """Index new or changed documents and remove obsolete points."""
 
-    api_key = os.getenv("GEMINI_API_KEY")
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
 
-    if not api_key:
+    if not gemini_api_key:
         raise RuntimeError(
             f"GEMINI_API_KEY was not found. Check {ENV_FILE}."
+        )
+
+    # Qdrant Cloud requires an API key.
+    # Local Qdrant can still be used without one.
+    if QDRANT_URL.startswith("https://") and not QDRANT_API_KEY:
+        raise RuntimeError(
+            f"QDRANT_API_KEY was not found. Check {ENV_FILE}."
         )
 
     paths = discover_documents()
@@ -276,8 +293,15 @@ def sync_to_qdrant() -> None:
     qdrant_client = None
 
     try:
-        gemini_client = genai.Client(api_key=api_key)
-        qdrant_client = QdrantClient(url=QDRANT_URL)
+        gemini_client = genai.Client(api_key=gemini_api_key)
+
+        # IMPORTANT:
+        # Pass the Qdrant API key when connecting to Qdrant Cloud.
+        qdrant_client = QdrantClient(
+            url=QDRANT_URL,
+            api_key=QDRANT_API_KEY,
+            timeout=15,
+        )
 
         ensure_collection(qdrant_client)
         existing_by_source = load_existing_points(qdrant_client)
