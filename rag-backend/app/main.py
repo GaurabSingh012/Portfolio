@@ -10,7 +10,7 @@ from google.genai import types
 from pydantic import BaseModel, Field
 
 from app.retrieval import retrieve
-
+from app.request_middleware import install_request_middleware
 
 # Load settings from rag-backend/.env.
 ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
@@ -27,6 +27,7 @@ app = FastAPI(
     version="0.7.0",
 )
 
+install_request_middleware(app)
 
 SYSTEM_INSTRUCTION = """
 You are the friendly, conversational AI assistant on Gaurab

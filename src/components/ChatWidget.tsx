@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -14,10 +15,42 @@ type Message = {
 type ChatApiResponse = {
   answer?: unknown;
   error?: unknown;
+  requestId?: unknown;
 };
 
 function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getFriendlyError(
+  status: number,
+  serverMessage?: string,
+): string {
+  switch (status) {
+    case 400:
+    case 422:
+      return "I couldn't process that question. Please check it and try again.";
+
+    case 401:
+    case 403:
+      return "The assistant is temporarily unavailable. Please try again later.";
+
+    case 429:
+      return "The assistant has reached its current request limit. Please wait a little and try again.";
+
+    case 502:
+      return "The assistant couldn't connect to its knowledge service. Please try again shortly.";
+
+    case 503:
+      return "The assistant is temporarily unavailable. Please try again later.";
+
+    case 504:
+      return "The assistant is taking too long to respond. Please try again.";
+
+    default:
+      return serverMessage ||
+        "Something went wrong while processing your question. Please try again.";
+  }
 }
 
 export default function ChatWidget() {
@@ -46,11 +79,7 @@ export default function ChatWidget() {
     }
   }, [messages, isOpen, isLoading, error]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const question = input.trim();
-
+  async function sendQuestion(question: string) {
     if (!question || isLoading) {
       return;
     }
@@ -75,6 +104,7 @@ export default function ChatWidget() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ question }),
+        signal: AbortSignal.timeout(70_000),
       });
 
       const payload = (await response
@@ -82,12 +112,16 @@ export default function ChatWidget() {
         .catch(() => null)) as ChatApiResponse | null;
 
       if (!response.ok) {
-        const errorMessage =
+        const serverMessage =
           typeof payload?.error === "string"
             ? payload.error
-            : "The assistant couldn't answer right now. Please try again.";
+            : undefined;
 
-        throw new Error(errorMessage);
+        setError(getFriendlyError(response.status, serverMessage));
+
+        // Preserve the question so the visitor can retry.
+        setInput(question);
+        return;
       }
 
       if (typeof payload?.answer !== "string") {
@@ -103,16 +137,36 @@ export default function ChatWidget() {
         },
       ]);
     } catch (caughtError) {
-      console.warn("Portfolio chat request failed:", caughtError);
+      console.warn("Portfolio chat request failed.");
+
+      const isTimeout =
+        caughtError instanceof Error &&
+        (caughtError.name === "TimeoutError" ||
+          caughtError.name === "AbortError");
 
       setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Something went wrong. Please try again.",
+        isTimeout
+          ? "The request took too long. Please try again."
+          : "Could not reach the assistant. Check your connection and try again.",
       );
+
+      // Preserve the visitor's original question.
+      setInput(question);
     } finally {
       setIsLoading(false);
     }
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const question = input.trim();
+
+    if (!question || isLoading) {
+      return;
+    }
+
+    await sendQuestion(question);
   }
 
   return (
@@ -194,6 +248,8 @@ export default function ChatWidget() {
             {error && (
               <p className={styles.error} role="alert">
                 {error}
+                <br />
+                Your question is still in the input. You can try again.
               </p>
             )}
 
@@ -212,7 +268,10 @@ export default function ChatWidget() {
               id="portfolio-chat-input"
               type="text"
               value={input}
-              onChange={(event) => setInput(event.target.value)}
+              onChange={(event) => {
+                setInput(event.target.value);
+                if (error) setError("");
+              }}
               placeholder="Ask me anything..."
               maxLength={1000}
               autoComplete="off"
