@@ -1,243 +1,236 @@
-# Gaurab Kushwaha — Portfolio
 
-I am **Gaurab Kushwaha**, an Artificial Intelligence and Machine Learning student focused on building practical AI systems and software applications.
+# Personal Portfolio & RAG Assistant
 
-🌐 **Portfolio:** [gaurabkus.dev](https://gaurabkus.dev)  
-💼 **LinkedIn:** [Gaurab Kushwaha](https://www.linkedin.com/in/gaurab-kushwaha-837237285/)  
-🐙 **GitHub:** [GaurabSingh012](https://github.com/GaurabSingh012)  
-📧 **Email:** [gaurabkus781@gmail.com](mailto:gaurabkus781@gmail.com)
+**Live Portfolio:** [gaurabkus.dev](https://gaurabkus.dev)  
+**GitHub:** [Gaurab012](https://github.com/Gaurab012)
 
----
+A personal portfolio website enhanced with an AI-powered Retrieval-Augmented Generation (RAG) assistant.
 
-## About
+The portfolio showcases my profile, technical skills, projects, education, and experience. Visitors can interact with an integrated AI assistant to ask questions about my background and work. The assistant retrieves relevant information from a dedicated portfolio knowledge base and uses it to generate context-aware responses.
 
-I am a final-year **B.Tech student in Artificial Intelligence and Machine Learning** at Symbiosis Institute of Technology, Pune.
-
-My interests and hands-on work span:
-
-- Machine Learning
-- Deep Learning
-- Computer Vision
-- Natural Language Processing
-- Generative AI
-- Large Language Models
-- AI application development
-
-I enjoy taking an idea from data and experimentation to a practical, working application.
+The project combines a Next.js frontend, a Python FastAPI backend, Google Gemini for embeddings and response generation, and Qdrant for vector storage and similarity search.
 
 ---
 
-## Tech Stack
+## Features
 
-### AI / Machine Learning
-- Machine Learning
-- Deep Learning
-- Computer Vision
-- NLP
-- Generative AI
-- LLMs
-- EfficientNet
-- MobileBERT
-- TensorFlow.js
-
-### Programming & Data
-- Python
-- SQL
-- JavaScript
-- NumPy
-- Pandas
-
-### Development
-- React.js
-- React Native
-- FastAPI
-- Node.js
-- Express.js
-
-### Databases & Tools
-- MySQL
-- MongoDB
-- Git
-- GitHub
-- Linux
-- DVC
-- Postman
-
-### Cloud & Services
-- AWS
-- MongoDB Atlas
-- Cloudinary
-- Hugging Face
+- **Personal Portfolio:** Responsive website showcasing my profile, skills, projects, education, and experience.
+- **AI Portfolio Assistant:** Answers visitor questions about my background and projects using information from the portfolio knowledge base.
+- **Retrieval-Augmented Generation:** Combines semantic search with LLM-based response generation to provide context-aware answers.
+- **Knowledge Base Management:** Uses Markdown, text, and PDF documents as knowledge sources.
+- **Incremental Knowledge Synchronization:** Detects document changes and updates the corresponding records in Qdrant.
+- **Automated Workflow:** GitHub Actions automates backend testing and knowledge synchronization.
+- **Contact Form:** Handles visitor enquiries through the Resend email API.
+- **Backend Security:** Shared-token authentication protects frontend-to-backend chat requests.
+- **Request Monitoring:** Includes request IDs, request-duration logging, input validation, and error handling.
 
 ---
 
-## Featured Projects
+## System Architecture
 
-### CalibraKidney
+The application consists of two primary workflows: processing visitor questions and preparing the knowledge base used by the RAG assistant.
 
-An AI-driven kidney health screening application that uses computer vision to interpret urinalysis test strips and classify kidney health stages.
+### Figure 1. Chat Request Flow
 
-**Highlights**
-- Computer vision pipeline for automated strip interpretation
-- Dataset collection and annotation under different lighting conditions
-- Benchmarking of 19 deep learning models
-- EfficientNet-B2 selected for the final model
-- 5-fold cross-validation evaluation
-- FastAPI inference backend
+![Figure 1: Chat Request Flow](public/Gemini_Qdrant_Portfolio_Chat_Pipeline.png)
 
-**Repository:**  
-[github.com/GaurabSingh012/CalibraKidney](https://github.com/GaurabSingh012/CalibraKidney)
+*Illustrates the end-to-end flow of a visitor's question through the Next.js frontend, FastAPI backend, Gemini embedding model, Qdrant vector database, and response generation pipeline.*
 
----
+**Request processing:**
 
-### VisionAI
+1. A visitor submits a question through the portfolio chat interface.
+2. The Next.js API route validates the request and forwards it to the FastAPI backend.
+3. The backend generates an embedding for the visitor's question.
+4. Qdrant performs similarity search against the portfolio knowledge collection.
+5. Relevant knowledge chunks are retrieved and passed to the Gemini chat model.
+6. The generated response is returned through FastAPI and the Next.js API route to the visitor.
 
-A full-stack AI image generation platform built around text-to-image synthesis.
+Common conversational messages, such as greetings, can be handled separately without executing the complete retrieval pipeline.
 
-**Highlights**
-- React-based frontend
-- Express.js backend
-- Hugging Face FLUX.1-schnell inference
-- MongoDB Atlas for application data
-- Cloudinary for optimized image delivery
-- Community gallery for generated artwork
-- AWS-based backend deployment
+### Figure 2. Knowledge Ingestion and Synchronization
 
-**Repository:**  
-[github.com/GaurabSingh012/AI_Image_Gen](https://github.com/GaurabSingh012/AI_Image_Gen)
+![Figure 2: Knowledge Ingestion and Synchronization](public/Qdrant_Knowledge_Sync_Pipeline.png)
 
----
+*Illustrates the document ingestion pipeline, including text extraction, chunking, embedding generation, incremental vector updates, and automated synchronization through GitHub Actions.*
 
-### Manuscript Digitizer
+**Knowledge ingestion process:**
 
-An AI-based project focused on digitizing and restoring historical Nepali manuscripts.
+1. **Document Discovery:** Identifies supported Markdown, text, and PDF files from configured knowledge sources.
+2. **Text Extraction:** Extracts readable content from the discovered documents.
+3. **Normalization and Chunking:** Normalizes the extracted content and divides it into smaller, overlapping chunks.
+4. **Embedding Generation:** Uses Google Gemini to convert text chunks into vector embeddings.
+5. **Incremental Upsert:** Detects content changes and updates the corresponding vector records.
+6. **Vector Storage:** Stores embeddings and associated metadata in the Qdrant `portfolio_knowledge` collection.
 
-**Highlights**
-- Character-level dataset preparation and annotation
-- Image preprocessing
-- Computer vision based character recognition
-- OCR processing
-- NLP techniques for reconstructing readable digital text
-
-**Repository:**  
-[github.com/GaurabSingh012/Manuscript_Digitizer](https://github.com/GaurabSingh012/Manuscript_Digitizer)
+GitHub Actions automates backend testing and triggers knowledge synchronization when the configured conditions are satisfied.
 
 ---
 
-### Ask-AI
+## RAG Pipeline
 
-A browser-based document question-answering application that performs NLP inference directly on the client side.
+The assistant follows a Retrieval-Augmented Generation workflow to answer questions using information stored in the portfolio knowledge base.
 
-**Highlights**
-- React + TypeScript frontend
-- TensorFlow.js based inference
-- MobileBERT architecture
-- Client-side processing for improved data privacy
-- Browser-based hardware acceleration
-- Responsive interface
+### 1. Document Discovery
 
-**Live Demo:**  
-[Ask-AI](https://gaurabsingh012.github.io/Ask-AI/)
+The ingestion process discovers supported `.md`, `.txt`, and `.pdf` documents from the configured knowledge sources. Repository README files can also be included as knowledge sources.
 
-**Repository:**  
-[github.com/GaurabSingh012/Ask-AI](https://github.com/GaurabSingh012/Ask-AI)
+### 2. Text Extraction and Chunking
 
----
+Extracted text is normalized and divided into smaller, overlapping chunks.
 
-## Education
+The current configuration uses:
 
-### Symbiosis Institute of Technology, Pune
+- **Maximum chunk size:** 1,200 characters
+- **Target overlap:** 180 characters
+- **Chunk boundaries:** Paragraph, line, sentence, and word boundaries are preferred where possible.
 
-**B.Tech in Artificial Intelligence and Machine Learning**  
-CGPA: **7.7 / 10**  
-July 2023 – June 2027
+### 3. Embedding Generation
 
-### Tirion International College, Kathmandu
+Google Gemini's configured embedding model converts each text chunk into a vector representation.
 
-**Higher Secondary Education (Class XII)**  
-GPA: **3.44**  
-June 2021 – April 2023
+Source information is retained as metadata so retrieved content can be associated with its original document.
 
----
+### 4. Vector Storage
 
-## Experience
+Generated embeddings and their associated metadata are stored in the Qdrant `portfolio_knowledge` collection.
 
-### Swayam Shikshan Prayog (SSP)
+Similarity search uses cosine distance to identify relevant information.
 
-**Service Learning Intern** — Pune, India  
-July 2025 – October 2025
+### 5. Semantic Retrieval
 
-- Processed and analyzed survey datasets using Python, Pandas, and NumPy.
-- Cleaned and transformed collected datasets for analysis.
-- Supported data interpretation, visualization, and reporting.
+When a visitor submits a portfolio-related question, the backend generates an embedding for the query and searches Qdrant for relevant knowledge chunks.
 
----
+The retrieval configuration returns up to five relevant results.
 
-## Certifications
+### 6. Response Generation
 
-- **Deep Learning Specialization** — DeepLearning.AI
-- **Generative AI with Large Language Models** — DeepLearning.AI
-- **Practical Guide to Python** — Frontend Masters
+The retrieved context and visitor's question are passed to the configured Gemini chat model.
+
+The model generates a context-aware response grounded in the retrieved portfolio information and is instructed to acknowledge when relevant information is unavailable.
+
+### 7. Incremental Synchronization
+
+The ingestion process uses content fingerprints and stable point identifiers to avoid unnecessarily reprocessing unchanged documents.
+
+When source content changes, the corresponding vector records are updated. Outdated records can also be removed when their source documents are deleted.
 
 ---
 
-## Achievement
+## Technology Stack
 
-🏆 **Winner — SIT AIML Industry Conclave 2026**
-
-Also participated in the **InterCollege Web Design Competition — VSN IT Club**.
-
----
-
-## Beyond Code
-
-Outside of AI and software development, I enjoy:
-
-- 🏏 Cricket
-- ♟️ Chess
-
----
-
-## Portfolio Features
-
-The website includes:
-
-- Responsive single-page design
-- Dark / light theme
-- Project showcase
-- Skills and technology overview
-- Education and experience
-- Certifications and achievements
-- Resume download
-- Contact section
-- Responsive navigation
-- Performance-focused frontend implementation
+| Layer | Technologies |
+|---|---|
+| Frontend | Next.js, React, TypeScript |
+| Styling | Tailwind CSS |
+| Frontend API | Next.js Route Handlers |
+| Backend | Python, FastAPI, Pydantic |
+| LLM and Embeddings | Google Gemini API |
+| Vector Database | Qdrant |
+| Email Service | Resend |
+| Testing | Pytest |
+| CI/CD and Automation | GitHub Actions |
+| Deployment | Vercel, FastAPI hosting, Qdrant Cloud |
 
 ---
 
-## Built With
+## Repository Structure
 
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
+```text
+portfolio/
+│
+├── knowledge/
+│   ├── projects/
+│   ├── experience.md
+│   ├── profile.md
+│   ├── skills.md
+│   └── resume.pdf
+│
+├── public/
+│   ├── Gemini_Qdrant_Portfolio_Chat_Pipeline.png
+│   ├── Qdrant_Knowledge_Sync_Pipeline.png
+│   ├── gaurab.png
+│   └── resume.pdf
+│
+├── rag-backend/
+│   ├── app/
+│   ├── tests/
+│   ├── requirements.txt
+│   └── requirements-dev.txt
+│
+├── src/
+│   ├── app/
+│   │   └── api/
+│   │       ├── chat/
+│   │       └── contact/
+│   │
+│   └── components/
+│
+├── .github/
+│   └── workflows/
+│
+├── AGENTS.md
+├── compose.yaml
+├── eslint.config.mjs
+├── next.config.ts
+├── package.json
+├── package-lock.json
+├── README.md
+└── tsconfig.json
+```
+
+*The structure above highlights the main project directories and files.*
+
+### Key Backend Components
+
+| Component | Responsibility |
+|---|---|
+| `main.py` | FastAPI application and chat endpoint |
+| `retrieval.py` | Query embedding generation and Qdrant retrieval |
+| `vector_store.py` | Vector database operations and knowledge synchronization |
+| `ingestion.py` | Document discovery and text extraction |
+| `chunking.py` | Text normalization and chunk generation |
+| `request_middleware.py` | Request identification and duration logging |
 
 ---
 
-## Contact
+## Testing and Automation
 
-For collaboration, internships, projects, or other opportunities:
+Backend tests are maintained in the `rag-backend/tests/` directory using Pytest.
 
-📧 **[gaurabkus781@gmail.com](mailto:gaurabkus781@gmail.com)**
+GitHub Actions automates the testing and knowledge synchronization workflow.
 
-🌐 **[gaurabkus.dev](https://gaurabkus.dev)**
+The workflow is designed to:
 
-💼 **[LinkedIn](https://www.linkedin.com/in/gaurab-kushwaha-837237285/)**
+- Run backend tests on configured GitHub events.
+- Detect changes to relevant knowledge files and repository documentation.
+- Trigger knowledge synchronization when configured conditions are met.
+- Support manual execution through GitHub Actions, if enabled.
 
-🐙 **[GitHub](https://github.com/GaurabSingh012)**
+This helps keep the Qdrant knowledge base aligned with the portfolio's source documents.
 
 ---
 
-## License
+## Deployment Architecture
 
-This project is personal portfolio software. The source code is available for reference, but the portfolio content, images, resume, and personal materials belong to their respective owner.
+The application uses separate services for the frontend, backend, vector database, and external AI and email APIs.
+
+| Service | Responsibility |
+|---|---|
+| Vercel | Hosts the Next.js portfolio frontend |
+| FastAPI Hosting | Runs the Python backend |
+| Qdrant Cloud | Stores and retrieves portfolio embeddings |
+| Google Gemini API | Handles embedding generation and response generation |
+| GitHub Actions | Automates testing and knowledge synchronization |
+| Resend | Handles contact form email delivery |
+
+The Next.js frontend communicates with the FastAPI backend through a server-side API route.
+
+Shared-token authentication protects frontend-to-backend chat requests. API keys and credentials are maintained as environment variables or deployment secrets and are not exposed in client-side code.
+
+---
+
+## Connect
+
+- **Portfolio:** [gaurabkus.dev](https://gaurabkus.dev)
+- **GitHub:** [Gaurab012](https://github.com/Gaurab012)
+- **LinkedIn:** [Gaurab Kushwaha](https://www.linkedin.com/in/gaurab-kushwaha-837237285/)
