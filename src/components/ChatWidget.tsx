@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import styles from "./ChatWidget.module.css";
 
@@ -173,14 +174,27 @@ export default function ChatWidget() {
     <>
       <button
         type="button"
-        className={styles.launcher}
+        className={`${styles.launcher} ${
+          isOpen ? styles.launcherOpen : ""
+        }`}
         onClick={() => setIsOpen((open) => !open)}
         aria-label={isOpen ? "Close chat" : "Open portfolio assistant"}
         aria-expanded={isOpen}
         aria-controls="portfolio-chat-panel"
         title="Chat with my AI assistant"
       >
-        {isOpen ? "×" : "✦"}
+        {isOpen ? (
+          "×"
+        ) : (
+          <Image
+            src="/bot_logo.png"
+            alt=""
+            width={64}
+            height={64}
+            priority
+            className={styles.launcherImage}
+          />
+        )}
       </button>
 
       {isOpen && (
@@ -191,8 +205,14 @@ export default function ChatWidget() {
           aria-label="Portfolio AI assistant"
         >
           <header className={styles.header}>
-            <div className={styles.avatar} aria-hidden="true">
-              ✦
+            <div className={styles.avatar}>
+              <Image
+                src="/bot_logo.png"
+                alt="Portfolio assistant robot"
+                width={44}
+                height={44}
+                className={styles.avatarImage}
+              />
             </div>
 
             <div className={styles.headerText}>
